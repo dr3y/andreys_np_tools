@@ -6,10 +6,8 @@ from copy import deepcopy as dc
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-attBsiteU21R = "CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC"
-Jonly = "CTGACAGCTAGCTCAGTCCTAGGTATAATGCTAGC"
-Ponly = "TTTCAATTTAATCATCCGGCTCGTATAATGTGTGGA"
-beginner =     "CAAGCCCATTATTACCCTGTTATCCCTAGACACCAATCAGAGGCCACA"
+import glob
+import os
 def rc(seq):
     return str(Seq(seq).reverse_complement())
 def countBarcodeStats(bcseqs,chopseqs='none'):
@@ -73,18 +71,6 @@ def countBarcodeStats(bcseqs,chopseqs='none'):
         jcount+=[curjcount]
         jpcount +=[curjpcount]
         pjcount +=[curpjcount]
-
-        #order1,order2,realfrac = quantifyRecOrder(seqschop,(1,30),"JP",\
-        #                                         False,True)
-        #order1 and order2 are lists where every element represents a sequence and
-        #the value represents how many times the forward or reverse order was seen
-        #in this sequence.
-        #plt.figure()
-        #o1list +=[sum(order1)]
-        #o2list +=[sum(order2)]
-        #plt.title("{}, with {} reads".format(bc,sum(order1)+sum(order2)))
-        #plt.hist([order1,order2],20,label = ["PJ","JP"])
-        #x+=[realfrac]
     return all_lists,run_lists,switch_lists,first_last
 def goodMatch(editDistance1,editDistance2=1000,thresh=10):
     if((editDistance1 < editDistance2) and (editDistance1 < thresh) and (editDistance1 >= 0)):
@@ -125,11 +111,20 @@ def rawcount(filename):
         buf = read_f(buf_size)
 
     return lines
-
-def barcodeSplitAndCountRecords(fastq_file_name,barcodes,processreads=10000,barcode_detection_threshold = 7,\
+def FastqMultiFileIterator(fastq_files_directory):
+    """this function iterates through all the fastq files in a directory,
+    returning one fastq record at a time"""
+    fastq_files = glob.glob(os.path.join(fastq_files_directory,"*.fastq"))
+    print(len(fastq_files))
+    for fastq_file in fastq_files:
+        with open(fastq_file) as open_fastq_file:
+            for title, seq, qual in FastqGeneralIterator(open_fastq_file):
+                yield title,seq,qual
+def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=10000,barcode_detection_threshold = 7,\
                                 minimum_slice_length = 220,step_length = 80,overlap_length=30,end_threshold=12,\
-                                prefix_sequence=attBsiteU21R,prefix_detection_threshold=12,\
-                               variable_sequences=[Jonly,Ponly],postfix_sequence=beginner,variable_sequence_threshold=12,
+                                prefix_sequence="CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC",prefix_detection_threshold=12,\
+                               variable_sequences=["CTGACAGCTAGCTCAGTCCTAGGTATAATGCTAGC","TTTCAATTTAATCATCCGGCTCGTATAATGTGTGGA"],\
+                               postfix_sequence="CAAGCCCATTATTACCCTGTTATCCCTAGACACCAATCAGAGGCCACA",variable_sequence_threshold=12,
                                progressbar = True,frontchecklength=150):
     allseqs = []
     allseqDict = {}
@@ -141,14 +136,15 @@ def barcodeSplitAndCountRecords(fastq_file_name,barcodes,processreads=10000,barc
             max=1.0
         )
         display(pbar2)
-    if(type(fastq_file_name)==str):
-        in_handle = open(fastq_file_name)
-        fastq_iterator = FastqGeneralIterator(in_handle)
-        total_number_of_reads = rawcount(fastq_file_name)/4
+    if(type(fastq_files_directory)==str):
+        #in_handle = open(fastq_file_name)
+        fastq_files_list = glob.glob(os.path.join(fastq_files_directory,"*.fastq"))
+        fastq_iterator = FastqMultiFileIterator(fastq_files_directory)
+        total_number_of_reads = (rawcount(fastq_files_list[0])/4)* len(fastq_files_list)
     else:
-        in_handle = fastq_file_name
+        in_handle = fastq_files_directory
         fastq_iterator = [["_",a,"_"] for a in in_handle]
-        total_number_of_reads = len(fastq_file_name)
+        total_number_of_reads = len(fastq_files_directory)
 
     rcprefix_sequence = rc(prefix_sequence)
     rcpostfix_sequence = rc(postfix_sequence)
@@ -274,8 +270,6 @@ def barcodeSplitAndCountRecords(fastq_file_name,barcodes,processreads=10000,barc
         #processreads-=1
         if(how_many_so_far >= processreads):
             break
-    if(type(fastq_file_name)==str):
-        in_handle.close()
     return allseqDict,seqstats,unsorted
 def bc2dhist(data,density=True,minlength = 2,maxlength = 10):
     """create a 2d histogram given a set of data such as
@@ -293,7 +287,7 @@ def bc2dhist(data,density=True,minlength = 2,maxlength = 10):
                                 range(0,maxlength)],density = density)
     labels = [a for a in range(0,maxlength)]
     return bchist, labels
-def makeBCplot1(bc,crange,sqrange,conditions,bcs,datalist,\
+def makeBCplot1(bc,crange,sqrange,experiment_dataframe,datalist,\
                               labs = ["P barcodes", "J barcodes"],makefig=True):
     if(makefig):
         plt.figure()
@@ -319,23 +313,28 @@ def makeBCplot1(bc,crange,sqrange,conditions,bcs,datalist,\
     #print(bc)
     #print(bcs)
     #print(conditions)
-    plt.title(conditions[bcs.index(bc)])
+    condstr = condNameBC(bc,experiment_dataframe)
+    plt.title(condstr)
     plt.xlabel(labs[0])
     plt.ylabel(labs[1])
     return h1,h2
+def condNameBC(bc,experiment_dataframe):
+    """condense the name of a set of conditions to one string"""
+    bcline = experiment_dataframe[experiment_dataframe["barcode"]==bc].iloc[0].fillna("")
+    return "_".join([str(a) for a in bcline])
 def diffPlot(control_hist,experimental_hist,cmap="RdBu",color_range = [-0.05,0.05],\
              labs=["P barcodes", "J barcodes"],control_barcode=None,exp_barcode=None,\
-             barcodes=None,conditions=None,makefig=True,annot=True):
+             experiment_dataframe=None,makefig=True,annot=True):
     diff_hist1 = experimental_hist-control_hist
     if(makefig):
         plt.figure()
 
     sns.heatmap(diff_hist1,cmap = "RdBu",vmin = color_range[0],vmax=color_range[1],annot=annot)
-    if(conditions == None):
+    if(type(experiment_dataframe)==type(None)):
         plt.title("difference")
     else:
-        ctrlname = conditions[barcodes.index(control_barcode)]
-        expname = conditions[barcodes.index(exp_barcode)]
+        ctrlname = condNameBC(control_barcode,experiment_dataframe)
+        expname = condNameBC(exp_barcode,experiment_dataframe)
         plt.title("{} - {}".format(expname,ctrlname))
     plt.xlabel(labs[0])
     plt.ylabel(labs[1])
@@ -452,18 +451,18 @@ def longestRun(string,chars):
         #counting the last run in the string
         best_run[mode]=current_run
     return(best_run)
-def diffPlotWrapper(ctrlBC,expBC,conditions,bcnames,dlist,labs=["Ps","Js"],crange=[0,.02,1],\
+def diffPlotWrapper(ctrlBC,expBC,experiment_dataframe,dlist,labs=["Ps","Js"],crange=[0,.02,1],\
 						sqrange=[-.5,6.5],annot=True,color_range=[-.05,.05]):
     plt.figure()
-    control_hist1,control_hist2 = makeBCplot1(ctrlBC,crange,sqrange,conditions,\
-                                                bcnames,dlist,labs,makefig=False)
+    control_hist1,control_hist2 = makeBCplot1(ctrlBC,crange,sqrange,\
+                                    experiment_dataframe,dlist,labs,makefig=False)
     experiment_hist1,experiment_hist2 = makeBCplot1(expBC,crange,sqrange,\
-                                    conditions,bcnames,dlist,labs,makefig=False)
-    print(experiment_hist1)
+                                    experiment_dataframe,dlist,labs,makefig=False)
+    #print(experiment_hist1)
     #plot the raw data from each experiment, then REMOVE those plots, and plot`
     #the difference plot. This is because that's the only way to get all that data
     #in the right orientation.
     plt.clf()
     diffPlot(control_hist1,experiment_hist1,labs=labs,control_barcode=ctrlBC,\
-             exp_barcode=expBC,barcodes=bcnames,conditions=conditions,annot=annot,\
+             exp_barcode=expBC,experiment_dataframe=experiment_dataframe,annot=annot,\
 			 color_range=color_range)
