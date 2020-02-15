@@ -8,9 +8,14 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import glob
 import os
+import dnaplotlib
 def rc(seq):
     return str(Seq(seq).reverse_complement())
 def countBarcodeStats(bcseqs,chopseqs='none'):
+    """this function uses edlib to count the number of matches to given bcseqs. 
+        chopseqs can be left, right, both, or none. This tells the program to 
+        chop off one barcode from either the left, right, both, or none of the
+        ends."""
     x=[]
     o1list = []
     o2list = []
@@ -122,10 +127,12 @@ def FastqMultiFileIterator(fastq_files_directory):
                 yield title,seq,qual
 def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=10000,barcode_detection_threshold = 7,\
                                 minimum_slice_length = 220,step_length = 80,overlap_length=30,end_threshold=12,\
-                                prefix_sequence="CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC",prefix_detection_threshold=12,\
+                                prefix_sequence="CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC",\
+                                prefix_detection_threshold=12,\
                                variable_sequences=["CTGACAGCTAGCTCAGTCCTAGGTATAATGCTAGC","TTTCAATTTAATCATCCGGCTCGTATAATGTGTGGA"],\
-                               postfix_sequence="CAAGCCCATTATTACCCTGTTATCCCTAGACACCAATCAGAGGCCACA",variable_sequence_threshold=12,
-                               progressbar = True,frontchecklength=150):
+                               postfix_sequence="CAAGCCCATTATTACCCTGTTATCCCTAGACACCAATCAGAGGCCACA",\
+                               variable_sequence_threshold=12,
+                               progressbar = True,frontchecklength=150,visualize=True):
     allseqs = []
     allseqDict = {}
     unsorted = []
@@ -230,35 +237,54 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         simplified_sequence = []
 
         while(True):
-            slicing = [step_length*i-overlap_length*(i>0),step_length+step_length*i]
+            #iterate through the read chopping out bit by bit
+            slicing = [step_length*i-overlap_length*(i>0),step_length+step_length*i] #this decides where to chop
             i+=1
-            subseq = curseq[slicing[0]:slicing[1]]
+            subseq = curseq[slicing[0]:slicing[1]] #we have chopped out a section of the sequence
             if(len(curseq)-slicing[0]< (sum([len(a) for a in variable_sequences])/float(len(variable_sequences)))):
+                #if the sequence we've got is shorter than any of the variable sequences we are looking for,
+                #don't even bother checking it, because it won't match
                 break
             if(not sequence_is_reverse):
+                #this part aligns variable regions to the chunk we have
                 matchlist = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
                                                                      for a in variable_sequences]
+                #maybe instead of a variable sequence we will have found the sequence that goes at the end.
                 isitTheEnd = edlib.align(postfix_sequence,subseq, mode="HW", task="path",k=-1)["editDistance"]
             else:
+                #this does the same thing but in reverse
                 matchlist = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
                                                         for a in reverse_complement_variable_seqs]
+                #if the sequence is reverse, then we look for the beginning, and that's the end.
                 isitTheEnd = edlib.align(rcprefix_sequence,subseq, mode="HW", task="path",k=-1)["editDistance"]
+                
 
             #isitJ = edlib.align(Jonly,subseq, mode="HW", task="path",k=-1)["editDistance"]
             #isitP = edlib.align(Ponly,subseq, mode="HW", task="path",k=-1)["editDistance"]
 
             if(goodMatchGeneralized([isitTheEnd],thresh=end_threshold)==0):
+                #this is true if we found the end
                 if(sequence_is_reverse):
                     simplified_sequence+=['B']
                 else:
                     simplified_sequence+=['E']
+                
                 nslice = step_length*(i+1)-overlap_length*(i+1>0)
                 seqslice = curseq[nslice:]
+
+                if(visualize):
+                    print('.'.join([str(a) for a in simplified_sequence]))
+
                 if(len(seqslice)>minimum_slice_length):
+                    #if we found the end sequence before reaching the end of the actual sequence, then
+                    #that means the second half of the sequence could be another read, so put it in
+                    #the unsorted list.
                     unsorted += [curseq[nslice:]]
                 break
             else:
+                #we haven't found the end but instead found one of the barcodes.
                 which = goodMatchGeneralized(matchlist,thresh = variable_sequence_threshold)
+                #i wonder if this will work if we find NO barcodes? which has to return something i guess
                 simplified_sequence+=[which]
         if(sequence_is_reverse):
             simplified_sequence = simplified_sequence[::-1]
