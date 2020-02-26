@@ -125,6 +125,96 @@ def FastqMultiFileIterator(fastq_files_directory):
         with open(fastq_file) as open_fastq_file:
             for title, seq, qual in FastqGeneralIterator(open_fastq_file):
                 yield title,seq,qual
+def findBarcodes(sequence,bclist,bcorder,buffer=12,beginstate=1,thresh = 0.7):
+    """this function will go through the sequence and identify the bits and the order of them
+    bcorder is formed like this: {1:[[bc1],[2]],
+                                  2:[[bc2,bc3],[3]],
+                                  3:[[bc4],[4]],
+                                  4:[[bc5,bc6],[3,5]],
+                                  5:[[bc7],[6]],
+                                  6:[[bc8,bc9],["x"]]}
+    bc is [sequence,bcname]
+    each dictionary entry contains what possible barcodes could be in that spot, followed by what
+    the next entry could be."""
+    #we start by looking through the entire sequence to find where bc1 is. Then, we take the next chunk
+    # (which is defined by the max of length between bc2 and bc3) and see if it contains bc2 or bc3. if NOT,
+    # then move on to the subsequent chunk, which could contain bc4. if that is also not found, then go on
+    # and look for bc5 or bc6. after that, we will search for bc4 OR bc7. If either of those are found
+    # that determines what the next search is. if nothing is found, you go on along both paths.
+    # but what if the length of sequence is different per path?  
+    lastpos = 0
+    accumulatedskip = 0 #how much we've already skipped because we couldnt find anything
+    seqidentified = [] #identified sequence elements based on given barcodes
+    
+    possiblestates = [beginstate]
+    while lastpos < len(sequence):
+        #curstate = beginstate
+        scores = []
+        maxskip = 0 #how much we can skip based on max length
+        possiblenewstates = []
+        for stateid in possiblestates:
+            state = bcorder[stateid]
+            possiblenewstates += state[1]
+            #we go through each option and see which is the most likely
+            nextstate = state[1] #this is the next set of possible states if 
+                                 #this state turns out to be correct
+            #each possibly barcode though might have a different length!!!
+            #if we failed to find ANYTHING, we need to advance forwards
+            #ok so in that case let's keep the previous sequence. in case
+            #we find anything it will advance forwards anyway.
+            #but each state has its own set of possible barcodes so we
+            #need to pick the longest of those to skip forward.
+            #for example:
+            # [  bc1  ][  bc2  ]----unk-------------------
+            #                   [ last max ][ current max]
+            #                   [   search here          ]
+            #
+            
+            maxlen = max([len(bc[0]) for bc in state[0]])
+            if(maxlen>maxskip):
+                #keep track of what is the longest
+                maxskip = maxlen
+            
+            bufferlen = maxlen+buffer
+            rightpos = lastpos+accumulatedskip+bufferlen
+            leftpos = lastpos-buffer
+            if(leftpos < 0):
+                leftpos = 0
+            
+            seqchunk = sequence[leftpos:rightpos]
+            
+            for bc in stateseqs[0]:
+                bcseq = bc[0]
+                bcid = bc[1]
+                #going through the list of possible barcodes
+                alignment = edlib.align(bcseq,seqchunk, mode="HW", task="path",k=-1)
+                alignmentidentity = alignment['editDistance']/float(len(bcseq))
+                if(alignmentidentity >= thresh):
+                    #this means we found an alignment that is better than the threshold!
+                    #there could be many of them....
+                    #in this case all we are storing is how well it aligned, which barcode it was,
+                    #and what the new end position would be.
+                    scores += [[alignmentidentity,bcid,lastpos+alignment['locations'][0][1],nextstate]]
+        #now we have looked through all the possibilities
+        if(len(scores)>0):
+            #this happens if we found something
+
+            sortedscores = sorted(scores)
+            bestscore = sortedscores[-1]
+            lastpos = bestscore[2]
+            seqidentified += [bestscore[1]]
+            if(bestscore[3]=="x"):
+                #then we've reached the end!!!!
+                break
+            possiblestates = bestscore[3]
+            accumulatedskip = 0
+        else:
+            #in this case we didn't find anything.
+            accumulatedskip+=maxskip #make the search space longer
+            seqidentified += ["unidentified"] #track that we didn't find anything
+            possiblestates = possiblenewstates #the possibilities advance
+    return seqidentified
+
 def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=10000,barcode_detection_threshold = 7,\
                                 minimum_slice_length = 220,step_length = 80,overlap_length=30,end_threshold=12,\
                                 prefix_sequence="CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC",\
