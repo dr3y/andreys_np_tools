@@ -125,7 +125,7 @@ def FastqMultiFileIterator(fastq_files_directory):
         with open(fastq_file) as open_fastq_file:
             for title, seq, qual in FastqGeneralIterator(open_fastq_file):
                 yield title,seq,qual
-def findBarcodes(sequence,bclist,bcorder,buffer=12,beginstate=1,thresh = 0.7):
+def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
     """this function will go through the sequence and identify the bits and the order of them
     bcorder is formed like this: {1:[[bc1],[2]],
                                   2:[[bc2,bc3],[3]],
@@ -147,13 +147,23 @@ def findBarcodes(sequence,bclist,bcorder,buffer=12,beginstate=1,thresh = 0.7):
     seqidentified = [] #identified sequence elements based on given barcodes
     
     possiblestates = [beginstate]
-    while lastpos < len(sequence):
+    searched = {}
+    while lastpos < len(sequence) and len(possiblestates)>0:
         #curstate = beginstate
         scores = []
         maxskip = 0 #how much we can skip based on max length
         possiblenewstates = []
+        #print(possiblestates)
         for stateid in possiblestates:
-            state = bcorder[stateid]
+            
+            try:
+                state = bcorder[stateid]
+            except KeyError:
+                #either we got "x", or something is wrong
+                if(stateid == "x"):
+                    continue
+                else:
+                    raise KeyError("couldn't find a state with name "+str(stateid))
             possiblenewstates += state[1]
             #we go through each option and see which is the most likely
             nextstate = state[1] #this is the next set of possible states if 
@@ -177,26 +187,53 @@ def findBarcodes(sequence,bclist,bcorder,buffer=12,beginstate=1,thresh = 0.7):
             
             bufferlen = maxlen+buffer
             rightpos = lastpos+accumulatedskip+bufferlen
+            if(rightpos > len(sequence)):
+                rightpos = len(sequence)
             leftpos = lastpos-buffer
             if(leftpos < 0):
                 leftpos = 0
             
             seqchunk = sequence[leftpos:rightpos]
-            
-            for bc in stateseqs[0]:
+            done = 1
+            for bc in state[0]:
                 bcseq = bc[0]
                 bcid = bc[1]
                 #going through the list of possible barcodes
+                #print("aligning "+str(bcid)+" at "+str(leftpos)+":"+str(rightpos))
+                ""
+                if(bcid in searched):
+                    #this is checking if we already tried searching for this
+                    checklpos = searched[bcid][0]
+                    checkrpos = searched[bcid][1]
+                    #there are many scenarios where we are re-searching through
+                    #the same area. But we are hoping that we can find something
+                    #we didn't before because it spans the junction.
+                    #however, if we are trying to search entirely within an area we already
+                    #searched, then stop.
+                    if(leftpos>=checklpos and rightpos<=checkrpos):
+                        continue
+                #"""
+                done = 0
+                #if the above variable is set to 0, we haven't searched for all possibilities
+                #yet
                 alignment = edlib.align(bcseq,seqchunk, mode="HW", task="path",k=-1)
-                alignmentidentity = alignment['editDistance']/float(len(bcseq))
+                searched[bcid]=[leftpos,rightpos]
+                alignmentidentity = 1.0-alignment['editDistance']/float(len(bcseq))
+                #print("identity is "+str(alignmentidentity))
                 if(alignmentidentity >= thresh):
                     #this means we found an alignment that is better than the threshold!
                     #there could be many of them....
                     #in this case all we are storing is how well it aligned, which barcode it was,
                     #and what the new end position would be.
                     scores += [[alignmentidentity,bcid,lastpos+alignment['locations'][0][1],nextstate]]
+            if(done):
+                #this means there's nothing else to look for
+                possiblenewstates = possiblenewstates[:-1]
+                
+
         #now we have looked through all the possibilities
         if(len(scores)>0):
+            #print("found!")
             #this happens if we found something
 
             sortedscores = sorted(scores)
