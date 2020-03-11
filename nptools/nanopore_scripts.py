@@ -153,7 +153,7 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
         scores = []
         maxskip = 0 #how much we can skip based on max length
         possiblenewstates = []
-        #print(possiblestates)
+        print(possiblestates)
         for stateid in possiblestates:
             
             try:
@@ -225,6 +225,7 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
                     #there could be many of them....
                     #in this case all we are storing is how well it aligned, which barcode it was,
                     #and what the new end position would be.
+                    print("found {} matching {} in {}:{}".format(bcid,alignmentidentity,leftpos,rightpos))
                     scores += [[alignmentidentity,bcid,lastpos+alignment['locations'][0][1],nextstate]]
             if(done):
                 #this means there's nothing else to look for
