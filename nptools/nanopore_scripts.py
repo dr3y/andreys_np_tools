@@ -125,7 +125,7 @@ def FastqMultiFileIterator(fastq_files_directory):
         with open(fastq_file) as open_fastq_file:
             for title, seq, qual in FastqGeneralIterator(open_fastq_file):
                 yield title,seq,qual
-def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
+def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6,debug=False):
     """this function will go through the sequence and identify the bits and the order of them
     bcorder is formed like this: {1:[[bc1],[2]],
                                   2:[[bc2,bc3],[3]],
@@ -148,12 +148,14 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
     
     possiblestates = [beginstate]
     searched = {}
+    firsttime = 1
     while lastpos < len(sequence) and len(possiblestates)>0:
         #curstate = beginstate
         scores = []
         maxskip = 0 #how much we can skip based on max length
         possiblenewstates = []
-        print(possiblestates)
+        if(debug):
+            print(possiblestates)
         for stateid in possiblestates:
             
             try:
@@ -186,6 +188,9 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
                 maxskip = maxlen
             
             bufferlen = maxlen+buffer
+            if(firsttime):
+                bufferlen+=50000
+                firsttime = 0
             rightpos = lastpos+accumulatedskip+bufferlen
             if(rightpos > len(sequence)):
                 rightpos = len(sequence)
@@ -225,7 +230,8 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6):
                     #there could be many of them....
                     #in this case all we are storing is how well it aligned, which barcode it was,
                     #and what the new end position would be.
-                    print("found {} matching {} in {}:{}".format(bcid,alignmentidentity,leftpos,rightpos))
+                    if(debug):
+                        print("found {} matching {} in {}:{}".format(bcid,alignmentidentity,leftpos,rightpos))
                     scores += [[alignmentidentity,bcid,lastpos+alignment['locations'][0][1],nextstate]]
             if(done):
                 #this means there's nothing else to look for
