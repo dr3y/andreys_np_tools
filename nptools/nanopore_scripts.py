@@ -9,6 +9,7 @@ import seaborn as sns
 import glob
 import os
 import dnaplotlib
+import random
 def rc(seq):
     return str(Seq(seq).reverse_complement())
 def countBarcodeStats(bcseqs,chopseqs='none'):
@@ -125,6 +126,23 @@ def FastqMultiFileIterator(fastq_files_directory):
         with open(fastq_file) as open_fastq_file:
             for title, seq, qual in FastqGeneralIterator(open_fastq_file):
                 yield title,seq,qual
+def readSimulator(bcorder,mutfreq=0.2,delfreq = 0.2,dellen=3,insfreq = 0.2,inslen=3,eitherdir=True,rseed=5):
+    """generates a set of simulated nanopore reads that resemble the real ones.
+    realism options:
+    mutfreq: this is the frequency that bases are misread as the wrong base
+    insfreq: this is the frequnency that something is inserted
+    inslen: this is the average insertion length
+    delfreq: this is the frequency that something is deleted
+    dellen: this is the average deletion
+    eitherdir: if true, reads are generated forwards or backwards
+    randomfront: a random sequence of on average this length is added to the beginning (before reversing)
+    randomback: a random sequence of on average this length is added to the end (before reversing)
+    """
+    random.seed(rseed)
+
+
+
+
 def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6,debug=False):
     """this function will go through the sequence and identify the bits and the order of them
     bcorder is formed like this: {1:[[bc1],[2]],
