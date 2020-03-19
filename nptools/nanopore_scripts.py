@@ -126,7 +126,8 @@ def FastqMultiFileIterator(fastq_files_directory):
         with open(fastq_file) as open_fastq_file:
             for title, seq, qual in FastqGeneralIterator(open_fastq_file):
                 yield title,seq,qual
-def readSimulator(bcorder,mutfreq=0.2,delfreq = 0.2,dellen=3,insfreq = 0.2,inslen=3,eitherdir=True,rseed=5):
+def readSimulator(bcorder,mutfreq=0.1,delfreq = 0.1,dellen=3,insfreq = 0.1,\
+    inslen=3,eitherdir=True,rseed=5,alphabet="AGTC",randomfront = 40, randomback = 5000):
     """generates a set of simulated nanopore reads that resemble the real ones.
     realism options:
     mutfreq: this is the frequency that bases are misread as the wrong base
@@ -137,8 +138,108 @@ def readSimulator(bcorder,mutfreq=0.2,delfreq = 0.2,dellen=3,insfreq = 0.2,insle
     eitherdir: if true, reads are generated forwards or backwards
     randomfront: a random sequence of on average this length is added to the beginning (before reversing)
     randomback: a random sequence of on average this length is added to the end (before reversing)
+    rseed: random seed
+    alphabet: dna letters
     """
     random.seed(rseed)
+    seqlist = []
+    state = 1
+    seqname = ""
+    numseqs = -1
+    while True:
+        if(state=="x"):
+            numseqs+=1
+            #this happens if we are done. Now we can post process everything
+            snamelist = [numseqs]+[a[1] for a in seqlist]
+            #the name contains the proper order
+            seqname = "sim"+"_".join([str(a) for a in snamelist])
+            frontseq = ""
+            backseq = ""
+            if(randomfront >0):
+                #generate a random sequence to put in front of the known sequence
+                #the length of this random sequence is random too
+                #using the random.randrange makes it a uniform distribution
+                frontlen = random.randrange(randomfront-randomfront/10, randomfront+randomfront/10)
+                frontseq = "".join([random.choice(alphabet) for a in range(frontlen)])
+            if(randomback > 0):
+                #generate a random sequence to put in the back of the known sequence
+                backlen = random.randrange(randomback-randomback/10, randomback+randomback/10)
+                backseq = "".join([random.choice(alphabet) for a in range(backlen)])
+            #now put together the prototype sequence without any mutations
+            midseq = "".join([a[0] for a in seqlist])
+            #assemble the mutated sequence into this new variable
+            mutatedmidseq = ""
+            #these are the possible mutations
+            mutations = [[mutfreq,"mut"],[delfreq,"del"],[insfreq,"ins"]]
+            #this variable tells the assembler to skip some number of letters
+            delcounter = 0
+            for letter in midseq:
+                #do it once for every letter!
+                if(delcounter>0):
+                    delcounter-=1
+                    continue
+                #this computes a mutation frequency per letter.
+                #uses gillespie logic. 
+                R = random.random()
+                randsum = 0
+                mutid = ""
+                for mutationprob in mutations:
+                    #we add the frequency of everything until it is bigger
+                    #than the random number from 0 to one we generated called R
+                    randsum += mutationprob[0]
+                    if(randsum > R):
+                        #if we reached R that means we do the thing!
+                        mutid = mutationprob[1]
+                if(mutid == "mut"):
+                    #this is just a nucleotide change
+                    newnuc = letter
+                    while(newnuc == letter):
+                        #keep choosing a new letter until its different
+                        newnuc = random.choice(alphabet)
+                    mutatedmidseq += newnuc
+                elif(mutid == "del"):
+                    #we are deleting some positions
+                    delcounter = random.randrange(dellen-int(dellen*.5),\
+                                                    dellen+int(dellen*.5))
+                    #it could be negative i guess if dellen is small
+                    if(delcounter < 0):
+                        delcounter = 0
+                elif(mutid == "ins"):
+                    #insert random nucleotides
+                    inscounter = random.randrange(inslen-int(inslen*.5),\
+                                                    inslen+int(inslen*.5))
+                    if(inscounter <= 0):
+                        pass
+                    else:
+                        rseq = "".join([random.choice(alphabet) for a in range(inscounter)])
+                        mutatedmidseq += rseq
+                else:
+                    #this is just doing nothing
+                    mutatedmidseq+=letter
+            fullseq = frontseq+mutatedmidseq+backseq
+            if(eitherdir):
+                if(random.choice([0,1])):
+                    #print("flippin")
+                    #randomly flip!!
+                    fullseq = rc(fullseq)
+                else:
+                    pass
+                    #print("not flippin")
+            #print("yielded!")
+            yield(seqname,fullseq,"simulated")
+            #after yielding, we reset!
+            seqlist = []
+            state = 1
+            seqname = ""
+
+        #if not done, put together the sequence
+        possibleseqs = bcorder[state][0]
+        
+        chosenseq = random.choice(possibleseqs)
+        #print(chosenseq)
+        seqlist+=[chosenseq]
+        state = random.choice(bcorder[state][1])
+
 
 
 
@@ -264,13 +365,17 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6,debug=Fals
             sortedscores = sorted(scores)
             bestscore = sortedscores[-1]
             lastpos = bestscore[2]
+            if(debug):
+                print("found "+str(bestscore))
             seqidentified += [bestscore[1]]
-            if(bestscore[3]=="x"):
+            if(bestscore[3]==["x"]):
                 #then we've reached the end!!!!
                 break
             possiblestates = bestscore[3]
             accumulatedskip = 0
         else:
+            if(debug):
+                print("didn't find")
             #in this case we didn't find anything.
             accumulatedskip+=maxskip #make the search space longer
             seqidentified += ["unidentified"] #track that we didn't find anything
