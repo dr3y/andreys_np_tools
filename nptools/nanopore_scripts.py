@@ -240,9 +240,165 @@ def readSimulator(bcorder,mutfreq=0.1,delfreq = 0.1,dellen=3,insfreq = 0.1,\
         seqlist+=[chosenseq]
         state = random.choice(bcorder[state][1])
 
+def identifyRecords(seqIterator,bcorder,thresh=0.6,debug=False,sim=False,maxseqs = 100000,\
+    replacementdict={"uintf_isce":"U","attL":"L","bc1":'1',"bc2":'2',"attB":"B","unidentified":"-"}):
+    """go through each sequence presented by seqIterator and try to identify
+    the order and identity of segments presented by bcorder. This is
+    basically a wrapper of "findBarcodes".
+    seqIterator: This is an iterator containing sequences. Either
+    FastqGeneralIterator or a list converted to an iterator
+    bcorder: This list contains the putative order and identity of sequence sections
+    thresh: threshold identity of each segment
+    debug: determines if print statements are used
+    sim: if true, then we know what the true sequence is for each read, and it's in the name.
+    maxseqs: the maximum number of sequences to process
+    """
+    slist = []
+    rslist = []
+    ucorrectcountlist = []
+    rcorrectcountlist = []
+    bcorrectcountlist = []
+    seqsread = 0
+    def countCorrect(seqlist):
+        """counts the number of elements that are NOT                    
+        "unidentified",and returns whoever has the most"""
+        curbest = 0
+        curret = []
+        for seq in seqlist:
+            count = 1-seq.count("unidentified")/len(seq)
+            if(count > curbest):
+                curbest = count
+                curret = seq
+        return curret
+    for read in seqIterator:
+        if(debug):
+            print(seqsread)
+        readname = read[0]
+        seqsread+=1
+        if(seqsread> maxseqs):
+            break
+        rseq = read[1]
+        #try to align the read forwards or reverse
+        #just in case theres some kind of bias here, just pick
+        #a random direction to align
+        directionchoice = random.choice([0,1])
+        forrseq = ""
+        revrseq = ""
+        if(directionchoice):
+            forrseq = rseq
+            revrseq = rc(rseq)
+        else:
+            forrseq = rc(rseq)
+            revrseq = rseq
+        result = findBarcodes(forrseq,bcorder,thresh=thresh,debug=False)
+        resultrev = findBarcodes(revrseq,bcorder,thresh=thresh)
+        #then pick which direction worked the best
+        bestresult = countCorrect([result,resultrev])
 
+        slist+= [result] #this is randomly forward or reverse
+        rslist += [bestresult] #this is the one which has the most correctly aligned sections
+        if(sim):
+            #this happens if we know what the correct sequence should be. Compare the
+            #predicted sequence to the known one by performing an alignment.
+            correctresultstr = readname
+            bestresultstr = "".join(bestresult) #filtered result, chosen the best out of forward 
+                                                #and reverse alignment
+            unfresultstr = "".join(result) #unfiltered result, one of the random ones.
+            revresultstr = "".join(resultrev) #unfiltered result, randomly forward or reverse.
+            for value in replacementdict:
+                correctresultstr = correctresultstr.replace(value,replacementdict[value])
+                bestresultstr = bestresultstr.replace(value,replacementdict[value])
+                unfresultstr = unfresultstr.replace(value,replacementdict[value])
+                revresultstr = revresultstr.replace(value,replacementdict[value])
 
+            correctresultstr = "".join(correctresultstr.split("_")[1:])
+            if(debug and (seqsread%100==0)):
+                print("*"+correctresultstr)
+                print(">"+unfresultstr)
+                print("<"+revresultstr)
+                print("?"+bestresultstr)
 
+            bresultcompare = edlib.align(correctresultstr,bestresultstr,\
+                                            mode="HW", task="path",k=-1)
+            balignmentidentity = 1.0-bresultcompare['editDistance']/float(len(correctresultstr))
+            bcorrectcountlist += [balignmentidentity]
+
+            uresultcompare = edlib.align(correctresultstr,unfresultstr,\
+                                            mode="HW", task="path",k=-1)
+            ualignmentidentity = 1.0-uresultcompare['editDistance']/float(len(correctresultstr))
+            ucorrectcountlist += [ualignmentidentity]
+
+            rresultcompare = edlib.align(correctresultstr,revresultstr,\
+                                            mode="HW", task="path",k=-1)
+            ralignmentidentity = 1.0-rresultcompare['editDistance']/float(len(correctresultstr))
+            rcorrectcountlist += [ralignmentidentity]
+
+    if(sim):
+        plt.figure()
+        bins = np.linspace(0, 1.0, 11)
+        plt.title("Read ID fraction")
+        plt.hist(ucorrectcountlist, bins, alpha=0.5, label='for id frac')
+        plt.hist(rcorrectcountlist, bins, alpha=0.5, label='rev id frac')
+        plt.hist(bcorrectcountlist, bins, alpha=0.5, label='filtered id frac')
+        plt.legend(loc='upper left')
+    return slist, rslist
+
+def makePlots1(slist,rslist,title):
+    len1list = []
+    scount = []
+    bc1ct1 = []
+    bc2ct1 = []
+    for unit in slist:
+        len1list+=[len(unit)]
+        if(not(len(unit)==0)):
+            scount+=[float(unit.count("unidentified"))/len(unit)]
+        else:
+            scount+=[1000]
+        bc1ct1 +=[unit.count("bc1")]
+        bc2ct1 +=[unit.count("bc2")]
+
+    len2list=[]
+    rscount = []
+    bc1ct2 = []
+    bc2ct2 = []
+    for unit in rslist:
+        len2list+=[len(unit)]
+        if(not(len(unit)==0)):
+            rscount+=[float(unit.count("unidentified"))/len(unit)]
+        else:
+            rscount+=[1000]
+        bc1ct2 +=[unit.count("bc1")]
+        bc2ct2 +=[unit.count("bc2")]
+
+    plt.subplot(321)
+    bins = np.linspace(0, 1.0, 11)
+    plt.title("fraction of unid.")
+    plt.hist(scount, bins, alpha=0.5, label='id frac')
+    plt.hist(rscount, bins, alpha=0.5, label='filtered id frac')
+    #plt.legend(loc='upper left')
+
+    plt.subplot(223)
+    bins = np.linspace(0, 10.0,11)
+    plt.title("no of bc1")
+    plt.hist(bc1ct1, bins, alpha=0.5, label='bc1')
+    plt.hist(bc1ct2, bins, alpha=0.5, label='filteredbc1')
+    plt.legend(loc='upper right')
+
+    plt.subplot(224)
+    plt.title("no of bc2")
+    plt.hist(bc2ct1, bins, alpha=0.5, label='bc2')
+    plt.hist(bc2ct2, bins, alpha=0.5, label='filteredbc2')
+    #plt.legend(loc='upper left')
+
+    plt.subplot(322)
+    bins = np.linspace(3, 16.0,17)
+    plt.title("no of sect")
+    plt.hist(len1list, bins, alpha=0.5, label='unfiltered')
+    plt.hist(len2list, bins, alpha=0.5, label='filtered')
+    #plt.legend(loc='upper left')
+    figtitle = os.path.split(title)[1].split("_")[0]
+    plt.suptitle(figtitle)
+    plt.show()
 
 def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6,debug=False):
     """this function will go through the sequence and identify the bits and the order of them
