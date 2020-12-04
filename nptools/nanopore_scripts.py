@@ -610,8 +610,6 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #this next part compares the quality of match between the front and the back.
         #whichever has the best match will be deemed correct. If none of them have matches
         #that are good enough, then just toss them.
-        print(fread)
-        print(rread)
         maxfread = min(fread)
         maxrread = min(rread)
         if(maxfread >= 0 and maxrread >= 0):
@@ -631,10 +629,6 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
             #if this happens then both sides failed to detect the attb site, and we
             #also don't know which direction is right. This seems more likely
             seqstats[2]+=1
-        if(sequence_is_reverse):
-            print("reverse")
-        else:
-            print("forward")
         this_reads_barcode = "none"
         #next part finds barcodes in the edge sequences
         for bc in barcodes:
