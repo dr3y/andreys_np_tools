@@ -568,6 +568,14 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
     
     rcprefix_sequence = [rc(a) for a in prefix_sequence]
     rcpostfix_sequence = [rc(a) for a in postfix_sequence]
+    def allcomb_list(inlist):
+        if(len(inlist)==1):
+            return [[a] for a in inlist[0]]
+        outlst = []
+        for elem in inlist[0]:
+            outlst += [[elem]+ a for a in allcomb_list(inlist[1:])]
+        return outlst
+    
     if((processreads > total_number_of_reads) or (processreads <= 0)):
         processreads = total_number_of_reads
     how_many_so_far = 0
@@ -592,7 +600,7 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #actually that is the plasmid side therefor the newest added spacer
         fread = []
         rread = []
-        for prefix_s,rcpostfix_s in zip(prefix_sequence,rcpostfix_sequence):
+        for prefix_s,rcpostfix_s in allcomb_list([prefix_sequence,rcpostfix_sequence]):
             fread += [edlib.align(prefix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
             rread += [edlib.align(rcpostfix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
         
