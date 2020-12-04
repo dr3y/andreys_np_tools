@@ -592,9 +592,9 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #actually that is the plasmid side therefor the newest added spacer
         fread = []
         rread = []
-        for prefix_s,rcprefix_s in zip(prefix_sequence,rcprefix_sequence):
+        for prefix_s,rcpostfix_s in zip(prefix_sequence,rcpostfix_sequence):
             fread += [edlib.align(prefix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
-            rread += [edlib.align(rcprefix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
+            rread += [edlib.align(rcpostfix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
         
         #rread = edlib.align(rcprefix_sequence,rev, mode="HW", task="path",k=-1)["editDistance"]
         curseq = seq #we're going to use this variable to store the sequence which will
