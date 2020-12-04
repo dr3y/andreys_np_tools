@@ -602,6 +602,8 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #this next part compares the quality of match between the front and the back.
         #whichever has the best match will be deemed correct. If none of them have matches
         #that are good enough, then just toss them.
+        print(fread)
+        print(rread)
         maxfread = max(fread)
         maxrread = max(rread)
         if(maxfread >= 0 and maxrread >= 0):
