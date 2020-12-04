@@ -540,10 +540,10 @@ def findBarcodes(sequence,bcorder,buffer=12,beginstate=1,thresh = 0.6,debug=Fals
 
 def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=10000,barcode_detection_threshold = 7,\
                                 minimum_slice_length = 220,step_length = 80,overlap_length=30,end_threshold=12,\
-                                prefix_sequence="CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC",\
+                                prefix_sequence=["CCCAGCAGGTATGATCCTGACGACGGAGCACGCCGTCGTCGACAAGCC"],\
                                 prefix_detection_threshold=12,\
                                variable_sequences=["CTGACAGCTAGCTCAGTCCTAGGTATAATGCTAGC","TTTCAATTTAATCATCCGGCTCGTATAATGTGTGGA"],\
-                               postfix_sequence="CAAGCCCATTATTACCCTGTTATCCCTAGACACCAATCAGAGGCCACA",\
+                               postfix_sequence=["CAAGCCCATTATTACCCTGTTATCCCTAGACACCAATCAGAGGCCACA"],\
                                variable_sequence_threshold=12,
                                progressbar = True,frontchecklength=150,visualize=True):
     allseqs = []
@@ -565,9 +565,9 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         in_handle = fastq_files_directory
         fastq_iterator = [["_",a,"_"] for a in in_handle]
         total_number_of_reads = len(fastq_files_directory)
-
-    rcprefix_sequence = rc(prefix_sequence)
-    rcpostfix_sequence = rc(postfix_sequence)
+    
+    rcprefix_sequence = [rc(a) for a in prefix_sequence]
+    rcpostfix_sequence = [rc(a) for a in postfix_sequence]
     if((processreads > total_number_of_reads) or (processreads <= 0)):
         processreads = total_number_of_reads
     how_many_so_far = 0
@@ -590,19 +590,25 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         rev = seq[-frontchecklength:] #make sure this one is reverse complemented!
         #now, we are checking for the presence of the attB site. That marks the "front!"
         #actually that is the plasmid side therefor the newest added spacer
-        fread = edlib.align(prefix_sequence,front, mode="HW", task="path",k=-1)["editDistance"]
-        rread = edlib.align(rcpostfix_sequence,front, mode="HW", task="path",k=-1)["editDistance"]
+        fread = []
+        rread = []
+        for prefix_s,rcprefix_s in zip(prefix_sequence,rcprefix_sequence):
+            fread += [edlib.align(prefix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
+            rread += [edlib.align(rcprefix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
+        
         #rread = edlib.align(rcprefix_sequence,rev, mode="HW", task="path",k=-1)["editDistance"]
         curseq = seq #we're going to use this variable to store the sequence which will
         #subsequently be analyzed for having our barcodes
         #this next part compares the quality of match between the front and the back.
         #whichever has the best match will be deemed correct. If none of them have matches
         #that are good enough, then just toss them.
-        if(fread >= 0 and rread >= 0):
-            if(fread < rread and fread < prefix_detection_threshold):
+        maxfread = max(fread)
+        maxrread = max(rread)
+        if(maxfread >= 0 and maxrread >= 0):
+            if(maxfread < maxrread and maxfread < prefix_detection_threshold):
                 #if this happens then the read was already forwards
                 seqstats[0]+=1
-            elif(rread < fread and rread < prefix_detection_threshold):
+            elif(maxrread < maxfread and maxrread < prefix_detection_threshold):
                 #if this happens then the read was reverse, and we reverse it
                 seqstats[1]+=1
                 sequence_is_reverse=True
@@ -663,24 +669,29 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
                 matchlist = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
                                                                      for a in variable_sequences]
                 #maybe instead of a variable sequence we will have found the sequence that goes at the end.
-                isitTheEnd = edlib.align(postfix_sequence,subseq, mode="HW", task="path",k=-1)["editDistance"]
+                #isitTheEnd = edlib.align(postfix_sequence,subseq, mode="HW", task="path",k=-1)["editDistance"]
+
+                isitTheEnd = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
+                                                                    for a in postfix_sequence]
             else:
                 #this does the same thing but in reverse
                 matchlist = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
                                                         for a in reverse_complement_variable_seqs]
                 #if the sequence is reverse, then we look for the beginning, and that's the end.
-                isitTheEnd = edlib.align(rcprefix_sequence,subseq, mode="HW", task="path",k=-1)["editDistance"]
-                
+                isitTheEnd = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
+                                                                    for a in rcprefix_sequence]
+
+                #isitTheEnd = edlib.align(rcprefix_sequence,subseq, mode="HW", task="path",k=-1)["editDistance"]
 
             #isitJ = edlib.align(Jonly,subseq, mode="HW", task="path",k=-1)["editDistance"]
             #isitP = edlib.align(Ponly,subseq, mode="HW", task="path",k=-1)["editDistance"]
-
-            if(goodMatchGeneralized([isitTheEnd],thresh=end_threshold)==0):
+            matchnum = goodMatchGeneralized(isitTheEnd,thresh=end_threshold)
+            if(matchnum != -1):
                 #this is true if we found the end
                 if(sequence_is_reverse):
-                    simplified_sequence+=['B']
+                    simplified_sequence+=['B'+str(matchnum)]
                 else:
-                    simplified_sequence+=['E']
+                    simplified_sequence+=['E'+str(matchnum)]
                 
                 nslice = step_length*(i+1)-overlap_length*(i+1>0)
                 seqslice = curseq[nslice:]
