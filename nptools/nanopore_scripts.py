@@ -604,8 +604,8 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #that are good enough, then just toss them.
         print(fread)
         print(rread)
-        maxfread = max(fread)
-        maxrread = max(rread)
+        maxfread = min(fread)
+        maxrread = min(rread)
         if(maxfread >= 0 and maxrread >= 0):
             if(maxfread < maxrread and maxfread < prefix_detection_threshold):
                 #if this happens then the read was already forwards
