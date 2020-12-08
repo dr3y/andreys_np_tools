@@ -590,8 +590,9 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #update the progress bar every 100 sequences we read
 
         if(how_many_so_far %100 == 0):
-            if(pbar2 != None):
-                pbar2.value = float(how_many_so_far/float(processreads))
+            if(progressbar):
+                if(pbar2 != None):
+                    pbar2.value = float(how_many_so_far/float(processreads))
 
         #chop off the beginning and the end for orientation checking
         front = seq[:frontchecklength]
@@ -837,7 +838,6 @@ def quantifyRecOrder(seqs,seqlimits=(0,100),letters="AB",rev=False,stretch=False
                 boxwidth = maxlen/len(seq)
                 start = boxwidth*lett
                 end = boxwidth*(lett+1)
-                #print("{},{}".format(start,end))
                 #all the whole numbers between start and end get added to column 1 or 0
                 #fractional columns get a fraction of a 1.
                 #example: start = 2.5 end = 7.5
@@ -869,13 +869,10 @@ def quantifyRecOrder(seqs,seqlimits=(0,100),letters="AB",rev=False,stretch=False
                         frac[lastbox][lind]+=(end-lastbox)
                     for box in range(firstbox,lastbox)[1:]:
                         frac[box][lind]+=1.0
-
-
             else:
                 #in this case we are assuming each sequence represents
                 #an accurate record starting at the same time and ending
                 #at a random time corresponding to the length.
-
                 if(len(frac)>lett):
                     #this makes sure we don't run off the end of the array.
                     #if the current sequence is longer than the 'frac' array,
