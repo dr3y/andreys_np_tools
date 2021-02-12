@@ -558,9 +558,15 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         display(pbar2)
     if(type(fastq_files_directory)==str):
         #in_handle = open(fastq_file_name)
-        fastq_files_list = glob.glob(os.path.join(fastq_files_directory,"*.fastq"))
-        fastq_iterator = FastqMultiFileIterator(fastq_files_directory)
-        total_number_of_reads = (rawcount(fastq_files_list[0])/4)* len(fastq_files_list)
+        if(".fastq" in fastq_files_directory):
+            #in this case we are already given a file, no need to iterate
+            open_fastq_file = open(fastq_files_directory,"r")
+            fastq_iterator = FastqGeneralIterator(open_fastq_file)
+            total_number_of_reads = rawcount(fastq_files_directory)/4
+        else:
+            fastq_files_list = glob.glob(os.path.join(fastq_files_directory,"*.fastq"))
+            fastq_iterator = FastqMultiFileIterator(fastq_files_directory)
+            total_number_of_reads = (rawcount(fastq_files_list[0])/4)* len(fastq_files_list)
     else:
         in_handle = fastq_files_directory
         fastq_iterator = [["_",a,"_"] for a in in_handle]
