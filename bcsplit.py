@@ -18,7 +18,7 @@ df_seqs = pd.read_excel(datasetfname,sheet_name="sequences")
 
 seqlist = list(df_data.date_sequenced.unique())
 
-processreads = 100
+processreads = 100000
 frontchecklength = 175
 threshfrac = 0.3
 
