@@ -64,10 +64,10 @@ for seqdataset in seqlist:
         if(pd.isna(plasbc1)):
             plasbcs += [[]]
         elif(pd.isna(plasbc2)):
-            plasbcs += [[df_seqs[df_seqs.name==plasbc1].sequence.iloc[0]]]
+            plasbcs += [df_seqs[df_seqs.name==plasbc1].sequence.iloc[0]]
         else:
-            plasbcs += [[df_seqs[df_seqs.name==plasbc1].sequence.iloc[0],\
-                         df_seqs[df_seqs.name==plasbc2].sequence.iloc[0]]]
+            plasbcs += [df_seqs[df_seqs.name==plasbc1].sequence.iloc[0],\
+                         df_seqs[df_seqs.name==plasbc2].sequence.iloc[0]]
     #postfix
     postfix = []
     postfixes = list(subdf.suffix.unique())
