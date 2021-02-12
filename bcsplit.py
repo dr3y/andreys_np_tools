@@ -22,9 +22,11 @@ processreads = 100000
 frontchecklength = 175
 threshfrac = 0.3
 
-
+skip1 = 1
 for seqdataset in seqlist:
-    
+    if(skip1>0):
+        skip1-=1
+        continue
     subdf = df_data[df_data.date_sequenced==seqdataset]
     #prefix sequence(s)
     prefixes = list(subdf.prefix.unique())
