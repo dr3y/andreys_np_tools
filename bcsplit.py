@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../nptools")
+sys.path.append("./nptools")
 import pandas as pd
 import os
 import importlib
