@@ -45,7 +45,7 @@ for seqdataset in seqlist:
     condlist = []
     for bc in barcodes:
         bcseq = df_seqs[df_seqs.name==bc].sequence.iloc[0]
-        bcseqs[bc] = bcseq
+        bcseqs[bc] = (bcseq,rc(bcseq))
         #CONDITIONS
         condstr = ""
         for i in range(4):
