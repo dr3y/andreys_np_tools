@@ -761,7 +761,6 @@ def makeBCplot1(bc,crange,sqrange,experiment_dataframe,datalist,\
     h2,_,_,_ = plt.hist2d([a[1] for a in datalist[bc]],[a[0] for a in datalist[bc]],\
                cmin=crange[1],cmax=crange[2],bins=bins,range=[sqrange,sqrange],\
                normed=True,cmap = "viridis")
-
     #cbar = plt.colorbar()
     #cbar.solids.set_edgecolor("face")
     #plt.draw()
