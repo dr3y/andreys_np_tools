@@ -6,7 +6,7 @@ import importlib
 import pickle
 from nanopore_scripts import *
 datasetfname = os.path.join("input","datasets.xlsx")
-datapath = os.path.join("central","groups","murray-biocircuits","ashur","nanopore")
+datapath = os.path.join("/","central","groups","murray-biocircuits","ashur","nanopore")
 
 readsname = "allreads.fastq"
 outname = "simprec"
