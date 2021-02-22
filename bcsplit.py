@@ -6,6 +6,7 @@ import importlib
 import pickle
 from nanopore_scripts import *
 datasetfname = os.path.join("input","datasets.xlsx")
+inputfname = os.path.join("input","script_inputs.csv")
 datapath = os.path.join("/","central","groups","murray-biocircuits","ashur","nanopore")
 
 readsname = "allreads.fastq"
@@ -18,11 +19,13 @@ df_seqs = pd.read_excel(datasetfname,sheet_name="sequences")
 
 seqlist = list(df_data.date_sequenced.unique())
 
-processreads = 100000
-frontchecklength = 175
-threshfrac = 0.3
+df_inputs = pd.read_csv(inputfname)
+processreads = int(df_inputs[df_inputs.variable=="processreads"].value.iloc[0])
+frontchecklength = int(df_inputs[df_inputs.variable=="frontchecklength"].value.iloc[0])
+threshfrac = float(df_inputs[df_inputs.variable=="threshfrac"].value.iloc[0])
 
-skip1 = 1
+skip1 = int(df_inputs[df_inputs.variable=="skip"].value.iloc[0])
+statdf = pd.DataFrame(columns=["dataname","forward","reverse","unknown"])
 for seqdataset in seqlist:
     if(skip1>0):
         skip1-=1
@@ -102,7 +105,10 @@ for seqdataset in seqlist:
                                                variable_sequence_threshold=len(plasbcs[0])*threshfrac,\
                                                 frontchecklength=frontchecklength,visualize=False,progressbar = False)
     #'''
+    statdf.append(pd.DataFrame([[seqdataset,seqstats[0],seqstats[1],seqstats[2]]],columns=["dataname","forward","reverse","unknown"))
     print("we had {} forward, {} reverse, and {} where we couldn't tell".format(seqstats[0],seqstats[1],seqstats[2]))
     allseqDict['conditions']=condlist+["none"]
     with open(os.path.join(datapath,str(seqdataset),str(seqdataset)+'_'+str(outname)+'.pickle'),'wb') as f:
         pickle.dump(allseqDict,f,pickle.HIGHEST_PROTOCOL)
+with open(os.path.join(datapath,"alldata.pickle","wb")) as f:
+    pickle.dump(statdf,f,pickle.HIGHEST_PROTOCOL)
