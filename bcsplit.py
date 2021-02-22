@@ -110,5 +110,5 @@ for seqdataset in seqlist:
     allseqDict['conditions']=condlist+["none"]
     with open(os.path.join(datapath,str(seqdataset),str(seqdataset)+'_'+str(outname)+'.pickle'),'wb') as f:
         pickle.dump(allseqDict,f,pickle.HIGHEST_PROTOCOL)
-with open(os.path.join(datapath,"alldata.pickle","wb")) as f:
+with open(os.path.join(datapath,"alldata.pickle"),"wb") as f:
     pickle.dump(statdf,f,pickle.HIGHEST_PROTOCOL)
