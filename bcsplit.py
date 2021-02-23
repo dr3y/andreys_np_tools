@@ -105,7 +105,8 @@ for seqdataset in seqlist:
                                                variable_sequence_threshold=len(plasbcs[0])*threshfrac,\
                                                 frontchecklength=frontchecklength,visualize=False,progressbar = False)
     #'''
-    statdf.append(pd.DataFrame([[seqdataset,seqstats[0],seqstats[1],seqstats[2]]],columns=["dataname","forward","reverse","unknown"]))
+    statdf = statdf.append(pd.DataFrame([[seqdataset,seqstats[0],seqstats[1],seqstats[2]]],\
+                                    columns=["dataname","forward","reverse","unknown"]))
     print("we had {} forward, {} reverse, and {} where we couldn't tell".format(seqstats[0],seqstats[1],seqstats[2]))
     allseqDict['conditions']=condlist+["none"]
     with open(os.path.join(datapath,str(seqdataset),str(seqdataset)+'_'+str(outname)+'.pickle'),'wb') as f:
