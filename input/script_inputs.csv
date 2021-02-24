@@ -1,5 +1,5 @@
 variable,value
-processreads,10000
+processreads,300000
 frontchecklength,175
 threshfrac,.3
 skip,1
