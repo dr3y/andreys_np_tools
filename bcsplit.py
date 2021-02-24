@@ -43,6 +43,19 @@ for seqdataset in seqlist:
             prefixlist = [prefix]
         for pref in prefixlist:
             prefixseqslist += [df_seqs[df_seqs.name==pref].sequence.iloc[0]]
+    #postfix
+    postfix = []
+    postfixes = list(subdf.suffix.unique())
+    postfixseqslist = []
+    for pfix in postfixes:
+        if(pd.isna(pfix)):
+            postfixlist = []
+        elif("," in pfix):
+            postfixlist = pfix.replace("[","").replace("]","").split(",")   
+        else:
+            postfixlist = [pfix]
+        for post in postfixlist:
+            postfixseqslist += [df_seqs[df_seqs.name==pfix].sequence.iloc[0]]
     #barcode sequences
     barcodes = list(subdf.barcode.unique())
     bcseqs = {}
@@ -73,15 +86,7 @@ for seqdataset in seqlist:
         else:
             plasbcs += [df_seqs[df_seqs.name==plasbc1].sequence.iloc[0],\
                          df_seqs[df_seqs.name==plasbc2].sequence.iloc[0]]
-    #postfix
-    postfix = []
-    postfixes = list(subdf.suffix.unique())
-    for pfix in postfixes:
-        pfixseq = df_seqs[df_seqs.name==pfix].sequence
-        if(len(pfixseq)==0):
-          postfix += [""]
-        else:
-            postfix+=[pfixseq.iloc[0]]
+    
     if(any([pd.isna(bcseqs[a]) for a in bcseqs])):
         continue
     fastqfilename = os.path.join(datapath,str(seqdataset),readsname)
@@ -89,18 +94,18 @@ for seqdataset in seqlist:
     print(f"get reads from {fastqfilename}")
     print(f"prefixseqslist is {prefixseqslist}")
     print(f"plasbcs is {plasbcs}")
-    print(f"postfixseq is {postfix}")
+    print(f"postfixseq is {postfixseqslist}")
     print(f"bcseqs is {bcseqs}")
     print(f"condnames is {condlist}")
     print(f"put output into {os.path.join(datapath,str(seqdataset),str(seqdataset)+'_'+str(outname)+'.py')}")
     ''
     allseqDict,seqstats,unsorted=barcodeSplitAndCountRecords(fastqfilename,bcseqs,\
                                                 barcode_detection_threshold=len(list(bcseqs.values())[0])*threshfrac,\
-                                                end_threshold=len(postfix[0])*threshfrac,\
+                                                end_threshold=(sum([len(a) for a in postfixseqslist])/len(postfixseqslist))*threshfrac,\
                                                 processreads=processreads,\
                                                 variable_sequences=plasbcs,\
                                                 prefix_sequence=prefixseqslist,\
-                                                postfix_sequence=postfix,\
+                                                postfix_sequence=postfixseqslist,\
                                                prefix_detection_threshold=len(prefixseqslist[0])*threshfrac,\
                                                variable_sequence_threshold=len(plasbcs[0])*threshfrac,\
                                                 frontchecklength=frontchecklength,visualize=False,progressbar = False)
