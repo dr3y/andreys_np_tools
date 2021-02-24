@@ -12,7 +12,7 @@ import dnaplotlib
 import random
 def rc(seq):
     return str(Seq(seq).reverse_complement())
-def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"]):
+def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"],use_specific_beginner=None):
     """this function uses edlib to count the number of matches to given bcseqs. 
         chopseqs can be left, right, both, or none. This tells the program to 
         chop off one barcode from either the left, right, both, or none of the
@@ -38,6 +38,9 @@ def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"]):
             curseq = ""
             if(len(seq)==0):
                 continue
+            elif(use_specific_beginner is not None):
+                if(use_specific_beginner not in seq):
+                    continue
             elif("B" in str(seq[0]) or "E" in str(seq[-1])):
                 #this sequence is already forwards
                 for element in seq:
@@ -62,7 +65,8 @@ def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"]):
                     else:
                         curseq+=str(element)
                 seqs += [curseq]
-        
+            
+
 
         seqschop = []
         curpcount = 0
@@ -93,7 +97,7 @@ def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"]):
             curswlist += [[pjct,jpct]]
             curpjcount+=pjct
             curjpcount+=jpct
-            currunslist += [longestRun(a,"PJ")]
+            currunslist += [longestRun(a,"".join(bcs))]
             if(len(anew)>1):
                 if(anew[0]==bcs[1]):
                     curfirstlast[0]+=1 #J in the first position
