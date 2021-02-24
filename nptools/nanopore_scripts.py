@@ -36,26 +36,26 @@ def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"]):
         for seq in bcseqs[bc]:
             #for every sequence we want to eliminate where it turns to -1
             curseq = ""
-            if("B" in seq[0] or "E" in seq[-1]):
+            if("B" in str(seq[0]) or "E" in str(seq[-1])):
                 #this sequence is already forwards
                 for element in seq:
-                    if("B" in element):
+                    if("B" in str(element)):
                         continue
                     elif(element == -1):
                         continue
-                    elif('E' in element):
+                    elif('E' in str(element)):
                         break
                     else:
                         curseq+=str(element)
                 seqs += [curseq]
-            elif("E" in seq[0] or "B" in seq[-1]):
+            elif("E" in str(seq[0]) or "B" in str(seq[-1])):
                 #turn the seq forwards
                 for element in seq[::-1]:
-                    if("B" in element):
+                    if("B" in str(element)):
                         continue
                     elif(element == -1):
                         continue
-                    elif('E' in element):
+                    elif('E' in str(element)):
                         break
                     else:
                         curseq+=str(element)
