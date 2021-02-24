@@ -12,11 +12,12 @@ import dnaplotlib
 import random
 def rc(seq):
     return str(Seq(seq).reverse_complement())
-def countBarcodeStats(bcseqs,chopseqs='none'):
+def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"]):
     """this function uses edlib to count the number of matches to given bcseqs. 
         chopseqs can be left, right, both, or none. This tells the program to 
         chop off one barcode from either the left, right, both, or none of the
         ends."""
+    
     x=[]
     o1list = []
     o2list = []
@@ -29,8 +30,37 @@ def countBarcodeStats(bcseqs,chopseqs='none'):
     run_lists = {}
     first_last = {}
     for bc in bcseqs:
-        seqs = bcseqs[bc]
-        #simpRecDF[simpRecDF.Barcode==bc].Sequence
+        if(bc=="conditions"):
+            continue
+        seqs = []
+        for seq in bcseqs[bc]:
+            #for every sequence we want to eliminate where it turns to -1
+            curseq = ""
+            if("B" in seq[0] or "E" in seq[-1]):
+                #this sequence is already forwards
+                for element in seq:
+                    if("B" in element):
+                        continue
+                    elif(element == -1):
+                        continue
+                    elif('E' in element):
+                        break
+                    else:
+                        curseq+=str(element)
+                seqs += [curseq]
+            elif("E" in seq[0] or "B" in seq[-1]):
+                #turn the seq forwards
+                for element in seq[::-1]:
+                    if("B" in element):
+                        continue
+                    elif(element == -1):
+                        continue
+                    elif('E' in element):
+                        break
+                    else:
+                        curseq+=str(element)
+                seqs += [curseq]
+        
 
         seqschop = []
         curpcount = 0
@@ -51,21 +81,21 @@ def countBarcodeStats(bcseqs,chopseqs='none'):
                 anew = a[1:-1]
             #if(len(anew)>0):
             seqschop+=[anew]
-            pct = anew.count("P")
-            jct = anew.count("J")
+            pct = anew.count(bcs[0])
+            jct = anew.count(bcs[1])
             curbclist+=[[pct,jct]]
             curpcount+=pct
             curjcount+=jct
-            pjct = anew.count("PJ")
-            jpct = anew.count("JP")
+            pjct = anew.count("".join(bcs))
+            jpct = anew.count("".join(bcs[::-1]))
             curswlist += [[pjct,jpct]]
             curpjcount+=pjct
             curjpcount+=jpct
             currunslist += [longestRun(a,"PJ")]
             if(len(anew)>1):
-                if(anew[0]=="J"):
+                if(anew[0]==bcs[1]):
                     curfirstlast[0]+=1 #J in the first position
-                if(anew[-1]=="J"):
+                if(anew[-1]==bcs[1]):
                     curfirstlast[1]+=1 #J in the last position
                 curfirstlast[2]+=1 #this one counts all seqs
         first_last.update({bc:tuple(curfirstlast)})
