@@ -55,7 +55,7 @@ for seqdataset in seqlist:
         else:
             postfixlist = [pfix]
         for post in postfixlist:
-            postfixseqslist += [df_seqs[df_seqs.name==pfix].sequence.iloc[0]]
+            postfixseqslist += [df_seqs[df_seqs.name==post].sequence.iloc[0]]
     #barcode sequences
     barcodes = list(subdf.barcode.unique())
     bcseqs = {}
