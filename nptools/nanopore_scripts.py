@@ -38,9 +38,8 @@ def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"],use_specific_beginn
             curseq = ""
             if(len(seq)==0):
                 continue
-            elif(use_specific_beginner is not None):
-                if(use_specific_beginner not in seq):
-                    continue
+            elif((use_specific_beginner is not None) and (use_specific_beginner not in seq)):
+                continue
             elif("B" in str(seq[0]) or "E" in str(seq[-1])):
                 #this sequence is already forwards
                 for element in seq:
