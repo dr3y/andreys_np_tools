@@ -12,6 +12,68 @@ import dnaplotlib
 import random
 def rc(seq):
     return str(Seq(seq).reverse_complement())
+def allpaths(pathslist):
+    if(len(pathslist)==1):
+        return [[a] for a in pathslist[0]]
+    elif(len(pathslist)==0):
+        return []
+    else:
+        paths = []
+        for choice in pathslist[0]:
+            all_other_paths = allpaths(pathslist[1:])
+            paths += [[choice]+a for a in all_other_paths]
+        return paths
+
+def countReadsOfLengthN(bcseqs,readlen,chopseqs='none',bcs = ["0","1"],use_specific_beginner=None):
+    int_strings1 = ['_'.join(a) for a in allpaths(["L"]+[bcs]*readlen+["B"])]
+    read_types = [''.join(a) for a in allpaths([bcs]*readlen)]
+    outdict = {}
+    for bc in bcseqs:
+        if(bc=="conditions"):
+            continue
+        seqs = []
+        for seq in bcseqs[bc]:
+            #for every sequence we want to eliminate where it turns to -1
+            curseq = ""
+            if(len(seq)==0):
+                continue
+            elif((use_specific_beginner is not None) and (use_specific_beginner not in seq)):
+                continue
+            elif("B" in str(seq[0]) or "E" in str(seq[-1])):
+                #this sequence is already forwards
+                for element in seq:
+                    if("B" in str(element)):
+                        continue
+                        #curseq+=str(element)+"_"
+                    elif(element == -1):
+                        continue
+                    elif('E' in str(element)):
+                        continue
+                        #if(len(curseq)>=1 and curseq[-1]!="_"):
+                        #    curseq+="_"
+                        #curseq+=str(element)
+                    else:
+                        curseq+=str(element)
+                seqs += [curseq]
+            elif("E" in str(seq[0]) or "B" in str(seq[-1])):
+                #turn the seq forwards
+                for element in seq[::-1]:
+                    if("B" in str(element)):
+                        continue
+                        #curseq+=str(element)+"_"
+                    elif(element == -1):
+                        continue
+                    elif('E' in str(element)):
+                        continue
+                        #if(len(curseq)>=1 and curseq[-1]!="_"):
+                        #    curseq+="_"
+                        #curseq+=str(element)
+                    else:
+                        curseq+=str(element)
+                seqs += [curseq]
+        outdict[bc]={a:seqs.count(b) for a,b in zip(int_strings1,read_types)}
+    return outdict
+
 def countBarcodeStats(bcseqs,chopseqs='none',bcs = ["0","1"],use_specific_beginner=None):
     """this function uses edlib to count the number of matches to given bcseqs. 
         chopseqs can be left, right, both, or none. This tells the program to 
