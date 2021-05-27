@@ -23,4 +23,4 @@ if(__name__=="__main__"):
     gdict = {a.replace("p","").replace("g",""):a for a in genomelist}
     outdict = countSequencing(bcdict,gdict,(429,466),data_folder,minlen=1000)
     print(outdict)
-    pickle.dump(outdict,os.path.join(data_folder,"outfile.pickle"))
+    pickle.dump(outdict,os.path.join(data_folder,open("outfile.pickle","wb")))
