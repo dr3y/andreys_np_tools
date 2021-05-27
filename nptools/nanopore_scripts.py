@@ -23,7 +23,6 @@ def allpaths(pathslist):
             all_other_paths = allpaths(pathslist[1:])
             paths += [[choice]+a for a in all_other_paths]
         return paths
-
 def countReadsOfLengthN(bcseqs,readlen,chopseqs='none',bcs = ["0","1"],use_specific_beginner=None):
     int_strings1 = ['_'.join(a) for a in allpaths(["L"]+[bcs]*readlen+["B"])]
     read_types = [''.join(a) for a in allpaths([bcs]*readlen)]
@@ -39,7 +38,10 @@ def countReadsOfLengthN(bcseqs,readlen,chopseqs='none',bcs = ["0","1"],use_speci
                 continue
             elif((use_specific_beginner is not None) and (use_specific_beginner not in seq)):
                 continue
-            elif("B" in str(seq[0]) or "E" in str(seq[-1])):
+            elif("E" in str(seq[0]) or "B" in str(seq[-1])):
+                #in this case "E" means the genome, and "B" means the plasmid.
+                #this, forward means old -> new
+                #that means, genome - variable - plasmid
                 #this sequence is already forwards
                 for element in seq:
                     if("B" in str(element)):
@@ -55,7 +57,7 @@ def countReadsOfLengthN(bcseqs,readlen,chopseqs='none',bcs = ["0","1"],use_speci
                     else:
                         curseq+=str(element)
                 seqs += [curseq]
-            elif("E" in str(seq[0]) or "B" in str(seq[-1])):
+            elif("B" in str(seq[0]) or "E" in str(seq[-1])):
                 #turn the seq forwards
                 for element in seq[::-1]:
                     if("B" in str(element)):
@@ -1023,3 +1025,33 @@ def diffPlotWrapper(ctrlBC,expBC,experiment_dataframe,dlist,labs=["Ps","Js"],cra
     diffPlot(control_hist1,experiment_hist1,labs=labs,control_barcode=ctrlBC,\
              exp_barcode=expBC,experiment_dataframe=experiment_dataframe,annot=annot,\
 			 color_range=color_range)
+
+def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1000):
+    """
+    count reads that cover a specific area and catalog them per barcode and per genome/position
+    seq_filename_dict: dictionary containing {barcode:file_loc} where barcode is like "BC01" "BC02" "BC03" etc and file_loc is a filename such as \"BC10_0-3intPlasmid_short\""
+    genome_dict: dictionary containing {gen_name:gen} where gen_name is a genome name such as "1_1_1" and gen is the actual name of the genome in the file such as "p1_p1_p1"
+    positions: tuple containing start and end position that we are checking reads overlap
+    data_folder: path to all the files whose names are in seq_filename_dict and have .bam at the end
+    minlen: minimum read length to count (short reads are probably incorrectly aligned)
+    """
+    import pysam
+    outdict = {}
+    for barcode,file_loc in seq_filename_dict.items():
+        #go through each barcode
+        outdict[barcode]= {}
+        bc_filename = os.path.join(data_folder,file_loc+".bam")
+        with pysam.AlignmentFile(bc_filename,"rb") as alignFile:
+            for gen_name,gen in genome_dict.items():
+                #then look at each genome option
+                outdict[barcode][gen_name] = 0
+                for read in alignFile.fetch(gen,positions[0],positions[1]):
+                    rlen = read.infer_read_length()
+                    #print(f"read aligns ")
+                    if(rlen>minlen):
+                        outdict[barcode][gen_name]+=1
+    return outdict
+                    
+
+
+
