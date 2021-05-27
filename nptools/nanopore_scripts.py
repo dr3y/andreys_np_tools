@@ -1038,12 +1038,12 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
     import pysam
     outdict = {}
     region_set = set()
-    global unique_reads 
     unique_reads = set()
     def uniquecheck(read):
         if(read.is_secondary or read.is_supplementary):
             return False
         if(read.query_name not in unique_reads):
+            nonlocal unique_reads
             unique_reads += read.query_name
             return True
         else:
