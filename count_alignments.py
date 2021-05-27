@@ -7,8 +7,8 @@ import pickle
 
 if(__name__=="__main__"):
     date = "210507"
-    subfolder = "210526minimap3"
-    genome_used = "0-3intPlasmid_short"
+    subfolder = os.path.join("210526minimap3","N_int_plasmid_short")
+    genome_used = "0-3intPlasmid_short.sorted"
     data_folder = os.path.join("/central","groups","murray-biocircuits","ashur","nanopore",date,subfolder)
     bclist = [f"BC{a:02d}" for a in range(6,11)]
     bcdict = {a:f"{a}_{genome_used}" for a in bclist}
