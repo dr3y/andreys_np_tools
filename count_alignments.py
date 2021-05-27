@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import sys
 sys.path.append(os.path.join(".","nptools"))
 from nanopore_scripts import *
 import pickle
