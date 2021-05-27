@@ -1050,6 +1050,12 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
             for gen_name,gen in genome_dict.items():
                 #then look at each genome option
                 outdict[barcode][gen_name] = 0
+                region_set = set()
+                counter = 0
+                for read in alignFile.fetch(gen,positions[0],positions[1]):
+                    region_set.add(read.query_name)
+                    counter+=1
+                print(f"in genome {gen} for {barcode}, we have {len(region_set)} unique reads and {counter} total reads")
                 matchingreads = alignFile.count(contig=gen,start=positions[0],stop=positions[1],read_callback=lengthcheck)
                 outdict[barcode][gen_name] = matchingreads
     return outdict
