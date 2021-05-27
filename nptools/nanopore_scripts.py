@@ -1047,8 +1047,10 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
                 outdict[barcode][gen_name] = 0
                 for read in alignFile.fetch(gen,positions[0],positions[1]):
                     rlen = read.infer_read_length()
+                    rstart = read.reference_start
+                    rend = read.reference_end
                     #print(f"read aligns ")
-                    if(rlen>minlen):
+                    if(rlen>minlen and rstart < positions[0] and rend > positions[1]):
                         outdict[barcode][gen_name]+=1
     return outdict
                     
