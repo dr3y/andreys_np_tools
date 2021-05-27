@@ -1037,6 +1037,11 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
     """
     import pysam
     outdict = {}
+    def lengthcheck(read):
+        if(read.infer_read_length()>minlen):
+            return True
+        else:
+            return False
     for barcode,file_loc in seq_filename_dict.items():
         #go through each barcode
         outdict[barcode]= {}
@@ -1045,13 +1050,8 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
             for gen_name,gen in genome_dict.items():
                 #then look at each genome option
                 outdict[barcode][gen_name] = 0
-                for read in alignFile.fetch(gen,positions[0],positions[1]):
-                    rlen = read.infer_read_length()
-                    rstart = read.reference_start
-                    rend = read.reference_end
-                    #print(f"read aligns ")
-                    if(rlen>minlen and rstart < positions[0] and rend > positions[1]):
-                        outdict[barcode][gen_name]+=1
+                matchingreads = alignFile.count(contig=gen,start=positions[0],stop=positions[1],read_callback=lengthcheck)
+                outdict[barcode][gen_name] = matchingreads
     return outdict
                     
 
