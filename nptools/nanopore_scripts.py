@@ -1040,7 +1040,7 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
     region_set = set()
     unique_reads = set()
     def uniquecheck(read):
-        global unique_reads
+        nonlocal unique_reads
         if(read.is_secondary or read.is_supplementary):
             return False
         if(read.query_name not in unique_reads):
