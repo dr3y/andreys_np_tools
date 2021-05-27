@@ -1044,7 +1044,7 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
         if(read.is_secondary or read.is_supplementary):
             return False
         if(read.query_name not in unique_reads):
-            unique_reads += read.query_name
+            unique_reads.add(read.query_name)
             return True
         else:
             return False
