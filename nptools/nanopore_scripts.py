@@ -778,6 +778,8 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
                 #if the sequence we've got is shorter than any of the variable sequences we are looking for,
                 #don't even bother checking it, because it won't match
                 break
+            matchlist = []
+            isitTheEnd = []
             if(not sequence_is_reverse):
                 #this part aligns variable regions to the chunk we have
                 matchlist = [edlib.align(a,subseq, mode="HW", task="path",k=-1)["editDistance"]\
@@ -811,7 +813,13 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
                 seqslice = curseq[nslice:]
 
                 if(visualize):
-                    print('.'.join([str(a) for a in simplified_sequence]))
+                    outlst = []
+                    for a in simplified_sequence:
+                        if(a == -1):
+                            outlst += ["_"]
+                        else:
+                            outlst += [str(a)]
+                    print('.'.join(outlst))
 
                 if(len(seqslice)>minimum_slice_length):
                     #if we found the end sequence before reaching the end of the actual sequence, then
@@ -822,6 +830,7 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
             else:
                 #we haven't found the end but instead found one of the barcodes.
                 which = goodMatchGeneralized(matchlist,thresh = variable_sequence_threshold)
+
                 #i wonder if this will work if we find NO barcodes? which has to return something i guess
                 simplified_sequence+=[which]
         if(sequence_is_reverse):
