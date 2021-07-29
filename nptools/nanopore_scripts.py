@@ -706,9 +706,15 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #actually that is the plasmid side therefor the newest added spacer
         fread = []
         rread = []
+        fread_locations = []
+        rread_locations = []
         for prefix_s,rcpostfix_s in allcomb_list([prefix_sequence,rcpostfix_sequence]):
-            fread += [edlib.align(prefix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
-            rread += [edlib.align(rcpostfix_s,front, mode="HW", task="path",k=-1)["editDistance"]]
+            falign = edlib.align(prefix_s,front, mode="HW", task="path",k=-1)
+            ralign = edlib.align(rcpostfix_s,front, mode="HW", task="path",k=-1)
+            fread += [falign["editDistance"]]
+            rread += [ralign["editDistance"]]
+            fread_locations += [falign["locations"]]
+            rread_locations += [ralign["locations"]]
         
         #rread = edlib.align(rcprefix_sequence,rev, mode="HW", task="path",k=-1)["editDistance"]
         curseq = seq #we're going to use this variable to store the sequence which will
@@ -718,6 +724,7 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         #that are good enough, then just toss them.
         maxfread = min(fread)
         maxrread = min(rread)
+        #"max" in this case means maximum match, which is actually the minimum error
         if(maxfread >= 0 and maxrread >= 0):
             if(maxfread < maxrread and maxfread < prefix_detection_threshold):
                 #if this happens then the read was already forwards
@@ -731,6 +738,15 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
                 #both sides scored the same on the attb site, so then we don't know
                 #which direction is more correct. This seems very unlikely
                 seqstats[2]+=1
+            correct_location = 0
+            if(not sequence_is_reverse):
+                #if we did detect that the sequence was forwards then we should delete the sequence
+                #that we used to detect that, since it won't be anything else.
+                correct_location = max([a[1] for a in fread_locations[fread.index(maxfread)]])
+            else:
+                correct_location = max([a[1] for a in rread_locations[rread.index(maxrread)]])
+            
+            curseq = curseq[correct_location:]
         else:
             #if this happens then both sides failed to detect the attb site, and we
             #also don't know which direction is right. This seems more likely
@@ -768,7 +784,7 @@ def barcodeSplitAndCountRecords(fastq_files_directory,barcodes,processreads=1000
         ""
         i=0
         simplified_sequence = []
-
+        #curseq = curseq[frontchecklength-overlap_length:]
         while(True):
             #iterate through the read chopping out bit by bit
             slicing = [step_length*i-overlap_length*(i>0),step_length+step_length*i] #this decides where to chop
