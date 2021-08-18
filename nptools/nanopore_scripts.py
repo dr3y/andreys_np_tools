@@ -1079,6 +1079,7 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
         counter = 0
         with pysam.AlignmentFile(bc_filename,"rb") as alignFile:
             for gen_name,gen in genome_dict.items():
+                print(f"looking at genome {gen_name}")
                 #look at each genome
                 outdict[barcode][gen_name] = 0
                 
