@@ -6,8 +6,8 @@ from nanopore_scripts import *
 import pickle
 
 if(__name__=="__main__"):
-    date = "210507"
-    subfolder = os.path.join("210526minimap3","N_int_plasmid_short")
+    date = "210813"
+    subfolder = os.path.join("210816_minimap2")
     genome_used = "0-3intPlasmid_short.sorted"
     data_folder = os.path.join("/central","groups","murray-biocircuits","ashur","nanopore",date,subfolder)
     bclist = [f"BC{a:02d}" for a in range(6,11)]

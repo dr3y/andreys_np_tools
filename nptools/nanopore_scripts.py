@@ -1064,12 +1064,10 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
     outdict = {}
     region_set = set()
     unique_reads = set()
+    readquality = {}
     def uniquecheck(read):
         nonlocal unique_reads
-        if(read.is_secondary or read.is_supplementary):
-            return False
-        if(read.query_name not in unique_reads):
-            unique_reads.add(read.query_name)
+        if(read.mapping_quality == readquality[read.query_name]):
             return True
         else:
             return False
@@ -1081,14 +1079,20 @@ def countSequencing(seq_filename_dict,genome_dict,positions,data_folder,minlen=1
         counter = 0
         with pysam.AlignmentFile(bc_filename,"rb") as alignFile:
             for gen_name,gen in genome_dict.items():
-                #then look at each genome option
+                #look at each genome
                 outdict[barcode][gen_name] = 0
                 
                 for read in alignFile.fetch(gen,positions[0],positions[1]):
-                    if(not read.is_secondary):
-                        region_set.add(read.query_name)
-                        counter+=1
-                print(f"in genome {gen} for {barcode}, we have {len(region_set)} unique reads and {counter} total reads")
+                    #look at each read
+                    if(read.query_name in readquality):
+                        if(read.mapping_quality > readquality[read.query_name]):
+                            #record the maximum quality
+                            readquality[read.query_name] = read.mapping_quality
+                    else:
+                        readquality[read.query_name] = read.mapping_quality
+                    counter+=1
+            for gen_name,gen in genome_dict.items():   
+                #look through the genomes again and then only pick the reads that have the right (max) quality 
                 matchingreads = alignFile.count(contig=gen,start=positions[0],stop=positions[1],read_callback=uniquecheck)
                 outdict[barcode][gen_name] = matchingreads
     return outdict
